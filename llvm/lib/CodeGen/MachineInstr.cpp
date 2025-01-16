@@ -1430,7 +1430,7 @@ bool MachineInstr::mayAlias(AAResults *AA, const MachineInstr &Other,
   // Let the target decide if memory accesses cannot possibly overlap.
   if (TII->areMemAccessesTriviallyDisjoint(*this, Other))
     return false;
-
+    
   // Memory operations without memory operands may access anything. Be
   // conservative and assume `MayAlias`.
   if (memoperands_empty() || Other.memoperands_empty())

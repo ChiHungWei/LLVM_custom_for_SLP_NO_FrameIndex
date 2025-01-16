@@ -2664,6 +2664,53 @@ bool RISCVDAGToDAGISel::SelectAddrRegImm(SDValue Addr, SDValue &Base,
   return true;
 }
 
+
+bool RISCVDAGToDAGISel::SelectAddrRegImm_V(SDValue Addr, SDValue &Base,
+                                         SDValue &Offset, bool IsINX) {
+  
+  if (!CurDAG->isBaseWithConstantOffset(Addr))
+    return false;
+
+  SDLoc DL(Addr);
+  MVT VT = Addr.getSimpleValueType();
+
+  int64_t RV32ZdinxRange = IsINX ? 4 : 0;
+  if (CurDAG->isBaseWithConstantOffset(Addr)) {
+    int64_t CVal = cast<ConstantSDNode>(Addr.getOperand(1))->getSExtValue();
+    if (isInt<9>(CVal) && isInt<9>(CVal + RV32ZdinxRange)) {
+      Base = Addr.getOperand(0);
+      if (Base.getOpcode() == RISCVISD::ADD_LO) {
+        SDValue LoOperand = Base.getOperand(1);
+        if (auto *GA = dyn_cast<GlobalAddressSDNode>(LoOperand)) {
+          // If the Lo in (ADD_LO hi, lo) is a global variable's address
+          // (its low part, really), then we can rely on the alignment of that
+          // variable to provide a margin of safety before low part can overflow
+          // the 12 bits of the load/store offset. Check if CVal falls within
+          // that margin; if so (low part + CVal) can't overflow.
+          const DataLayout &DL = CurDAG->getDataLayout();
+          Align Alignment = commonAlignment(
+              GA->getGlobal()->getPointerAlignment(DL), GA->getOffset());
+          if (CVal == 0 || Alignment > CVal) {
+            int64_t CombinedOffset = CVal + GA->getOffset();
+            Base = Base.getOperand(0);
+            Offset = CurDAG->getTargetGlobalAddress(
+                GA->getGlobal(), SDLoc(LoOperand), LoOperand.getValueType(),
+                CombinedOffset, GA->getTargetFlags());
+            return true;
+          }
+        }
+      }
+
+      if (auto *FIN = dyn_cast<FrameIndexSDNode>(Base)){
+        return false;
+      }
+      Offset = CurDAG->getTargetConstant(CVal, DL, VT);
+      return true;
+    }
+  }
+  return false;
+}
+
 /// Similar to SelectAddrRegImm, except that the least significant 5 bits of
 /// Offset shoule be all zeros.
 bool RISCVDAGToDAGISel::SelectAddrRegImmLsb00000(SDValue Addr, SDValue &Base,

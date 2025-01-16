@@ -41,6 +41,26 @@ multiclass VPatUSLoadStoreSDNode<ValueType type,
             (store_instr reg_class:$rs2, GPR:$rs1, avl, log2sew)>;
 }
 
+
+// multiclass VPatUSLoadStoreWholeVRSDNode_I<ValueType type,
+//                                         int log2sew,
+//                                         LMULInfo vlmul,
+//                                         VReg reg_class,
+//                                         int sew = !shl(1, log2sew)> {
+//   defvar load_instr =
+//     !cast<Instruction>("VL"#!substr(vlmul.MX, 1)#"R_I_E"#sew#"_V");
+//   defvar store_instr =
+//     !cast<Instruction>("VS"#!substr(vlmul.MX, 1)#"R_I_V");
+
+//   // Load
+//   def : Pat<(type (load (AddrRegImm (XLenVT GPR:$rs1), simm9:$simm9))),
+//             (load_instr GPR:$rs1, simm9:$simm9)>;
+//   // Store
+//   def : Pat<(store type:$rs2 , (AddrRegImm (XLenVT GPR:$rs1),
+//                    simm9:$simm9)),
+//             (store_instr reg_class:$rs2, GPR:$rs1, simm9:$simm9)>;
+// }
+
 multiclass VPatUSLoadStoreWholeVRSDNode<ValueType type,
                                         int log2sew,
                                         LMULInfo vlmul,
@@ -902,11 +922,18 @@ foreach vti = !listconcat(FractionalGroupIntegerVectors,
                        GetVTypePredicates<vti>.Predicates) in 
   defm : VPatUSLoadStoreSDNode<vti.Vector, vti.Log2SEW, vti.LMul,
                                vti.AVL, vti.RegClass>;
+// //Load/Store with immediate as offest
+// foreach vti = [VI8M1, VI8M2, VI8M4, VI8M8, VI16M1, VI16M2, VI16M4, VI16M8, VI32M1, VI32M2, VI32M4, VI32M8, VI64M1, VI64M2, VI64M4, VI64M8] in 
+//   defm : VPatUSLoadStoreWholeVRSDNode_I<vti.Vector, vti.Log2SEW, vti.LMul, vti.RegClass>;
+
+
+//Load/Store for Whole Vector Registers
 foreach vti = [VI8M1, VI16M1, VI32M1, VI64M1, VBF16M1, VF16M1, VF32M1, VF64M1] in
   let Predicates = !if(!eq(vti.Scalar, f16), [HasVInstructionsF16Minimal],
                        GetVTypePredicates<vti>.Predicates) in 
   defm : VPatUSLoadStoreWholeVRSDNode<vti.Vector, vti.Log2SEW, vti.LMul,
                                       vti.RegClass>;
+//Load/Store for Grouped Vectors
 foreach vti = !listconcat(GroupIntegerVectors, GroupFloatVectors, GroupBFloatVectors) in
   let Predicates = !if(!eq(vti.Scalar, f16), [HasVInstructionsF16Minimal],
                        GetVTypePredicates<vti>.Predicates) in 

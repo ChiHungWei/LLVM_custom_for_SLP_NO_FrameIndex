@@ -160,6 +160,12 @@ class RISCVUImmOp<int bitsNum> : RISCVOp {
 class RISCVUImmLeafOp<int bitsNum> :
   RISCVUImmOp<bitsNum>, ImmLeaf<XLenVT, "return isUInt<" # bitsNum # ">(Imm);">;
 
+/////////////////////// this part should be aware /////////////////////////
+///  ParserMatchClass: In the same directory and /jason/llvm-project/riscv-custom/include/llvm/Target/Target.td
+///  EncoderMethod: getImmOpValue() function resides in /jason/llvm-project/llvm/lib/Target/RISCV/MCTargetDesc/RISCVMCCodeEmitter.cpp
+///  DecoderMethod: decodeSImmOperand() function resides in /jason/llvm-project/llvm/lib/Target/RISCV/Disassembler/RISCVDisassembler.cpp
+///  Operand type: /jason/llvm-project/llvm/lib/Target/RISCV/MCTargetDesc/RISCVBaseInfo.h
+
 class RISCVSImmOp<int bitsNum> : RISCVOp {
   let ParserMatchClass = SImmAsmOperand<bitsNum>;
   let EncoderMethod = "getImmOpValue";
@@ -167,9 +173,11 @@ class RISCVSImmOp<int bitsNum> : RISCVOp {
   let OperandType = "OPERAND_SIMM" # bitsNum;
 }
 
+/// ImmLeaf: /jason/llvm-project/riscv-custom/include/llvm/Target/TargetSelectionDAG.td
+
 class RISCVSImmLeafOp<int bitsNum> :
   RISCVSImmOp<bitsNum>, ImmLeaf<XLenVT, "return isInt<" # bitsNum # ">(Imm);">;
-
+///////////////////////////////////////////////////////////////////////////////////
 def FenceArg : AsmOperandClass {
   let Name = "FenceArg";
   let RenderMethod = "addFenceArgOperands";
@@ -243,6 +251,8 @@ def simm12 : RISCVSImmLeafOp<12> {
     return MCOp.isBareSymbolRef();
   }];
 }
+
+def simm9 : RISCVSImmLeafOp<9>;
 
 // A 12-bit signed immediate which cannot fit in 6-bit signed immediate,
 // but even negative value fit in 12-bit.
@@ -399,6 +409,7 @@ def uimm6gt32 : ImmLeaf<XLenVT, [{
 // Necessary because a frameindex can't be matched directly in a pattern.
 def FrameAddrRegImm : ComplexPattern<iPTR, 2, "SelectFrameAddrRegImm",
                                      [frameindex, or, add]>;
+def AddrRegImm_V : ComplexPattern<iPTR, 2, "SelectAddrRegImm_V">;
 def AddrRegImm : ComplexPattern<iPTR, 2, "SelectAddrRegImm">;
 
 // Return the negation of an immediate value.
@@ -2059,6 +2070,7 @@ include "RISCVInstrInfoZk.td"
 // Vector
 include "RISCVInstrInfoV.td"
 include "RISCVInstrInfoZvk.td"
+include "RISCVInstrInfoMTK_V.td"
 
 // Compressed
 include "RISCVInstrInfoC.td"

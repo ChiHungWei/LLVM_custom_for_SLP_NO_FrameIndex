@@ -313,6 +313,14 @@ class VWholeLoad<bits<3> nf, RISCVWidth width, string opcodestr, RegisterClass V
   let Uses = [];
 }
 
+// //Custom unit-stride whole register load vl<nf>ri.v vd, imm_12(rs1)
+// class VWholeLoad_I<bits<3> nf, RISCVWidth width, string opcodestr, RegisterClass VRC>
+//     : RVInstVLU_custom<nf, 1,
+//                 width.Value{2-0}, (outs VRC:$vd), (ins GPRMem:$rs1, simm12:$imm12),
+//                 opcodestr, "$vd, ${imm12}(${rs1})"> {
+//   let Uses = [];
+// }
+
 // unit-stride mask load vd, (rs1)
 class VUnitStrideLoadMask<string opcodestr>
     : RVInstVLU<0b000, LSWidth8.Value{3}, LUMOPUnitStrideMask, LSWidth8.Value{2-0},
@@ -376,6 +384,15 @@ class VUnitStrideStore<RISCVWidth width, string opcodestr>
                 "$vs3, ${rs1}$vm">;
 
 let vm = 1 in {
+// // vs<nf>r.v vs3, imm12(rs1)
+// class VWholeStore_I<bits<3> nf, string opcodestr, RegisterClass VRC>
+//     : RVInstVSU_custom<nf, 0,
+//                 0b000, (outs), (ins VRC:$vs3, GPRMem:$rs1, simm12:$imm12),
+//                 opcodestr, "$vs3, ${imm12}(${rs1})"> {
+//   let Uses = [];
+// }
+
+  
 // vs<nf>r.v vd, (rs1)
 class VWholeStore<bits<3> nf, string opcodestr, RegisterClass VRC>
     : RVInstVSU<nf, 0, SUMOPUnitStrideWholeReg,
@@ -1019,6 +1036,14 @@ multiclass VWholeLoadN<int l, bits<3> nf, string opcodestr, RegisterClass VRC> {
                    Sched<[s, ReadVLDX]>;
 }
 
+// multiclass VWholeLoadN_I<int l, bits<3> nf, string opcodestr, RegisterClass VRC> {
+//   defvar w = !cast<RISCVWidth>("LSWidth" # l);
+//   defvar s = !cast<SchedWrite>("WriteVLD" # !add(nf, 1) # "R");
+
+//   def E # l # _V : VWholeLoad_I<nf, w, opcodestr # "e" # l # "i.v", VRC>,
+//                    Sched<[s, ReadVLDX]>;
+// }
+
 //===----------------------------------------------------------------------===//
 // Instructions
 //===----------------------------------------------------------------------===//
@@ -1053,7 +1078,7 @@ foreach eew = [8, 16, 32, 64] in {
     // Vector Strided Instructions
     def VLSE#eew#_V  : VStridedLoad<w,  "vlse"#eew#".v">, VLSSchedMC<eew>;
     def VSSE#eew#_V  : VStridedStore<w,  "vsse"#eew#".v">, VSSSchedMC<eew>;
-
+    //Vector Load Whole Register Instructions
     defm VL1R : VWholeLoadN<eew, 0, "vl1r", VR>;
     defm VL2R : VWholeLoadN<eew, 1, "vl2r", VRM2>;
     defm VL4R : VWholeLoadN<eew, 3, "vl4r", VRM4>;
@@ -1065,6 +1090,22 @@ foreach eew = [8, 16, 32, 64] in {
   defm "" : VIndexLoadStore<eew>;
 }
 
+
+// //when eew == 8, VL1R_I_E8_V and VS1R_I_V have the same encoding(decoding conflits occurs!), so temporarily remove eew = 8.
+// foreach eew = [8, 16, 32, 64] in {
+//   defvar w = !cast<RISCVWidth>("LSWidth" # eew);
+
+//   let Predicates = !if(!eq(eew, 64), [HasVInstructionsI64],
+//                                      [HasVInstructions]) in {
+    
+//     //Vector Load Whole Register immediate Instructions
+//     defm VL1R_I_ : VWholeLoadN_I<eew, 0, "vl1r", VR>;
+//     defm VL2R_I_ : VWholeLoadN_I<eew, 1, "vl2r", VRM2>;
+//     defm VL4R_I_ : VWholeLoadN_I<eew, 3, "vl4r", VRM4>;
+//     defm VL8R_I_ : VWholeLoadN_I<eew, 7, "vl8r", VRM8>;
+//   }
+// }
+
 let Predicates = [HasVInstructions] in {
 def VLM_V : VUnitStrideLoadMask<"vlm.v">,
              Sched<[WriteVLDM_WorstCase, ReadVLDX]>;
@@ -1074,7 +1115,17 @@ def : InstAlias<"vle1.v $vd, (${rs1})",
                 (VLM_V VR:$vd, GPR:$rs1), 0>;
 def : InstAlias<"vse1.v $vs3, (${rs1})",
                 (VSM_V VR:$vs3, GPR:$rs1), 0>;
+// //Vector store Whole Register with immediate as offset Instructions
+// def VS1R_I_V : VWholeStore_I<0, "vs1ri.v", VR>,
+//              Sched<[WriteVST1R, ReadVST1R, ReadVSTX]>;
+// def VS2R_I_V : VWholeStore_I<1, "vs2ri.v", VRM2>,
+//              Sched<[WriteVST2R, ReadVST2R, ReadVSTX]>;
+// def VS4R_I_V : VWholeStore_I<3, "vs4ri.v", VRM4>,
+//              Sched<[WriteVST4R, ReadVST4R, ReadVSTX]>;
+// def VS8R_I_V : VWholeStore_I<7, "vs8ri.v", VRM8>,
+//              Sched<[WriteVST8R, ReadVST8R, ReadVSTX]>;
 
+//Vector Store Whole Register Instructions
 def VS1R_V : VWholeStore<0, "vs1r.v", VR>,
              Sched<[WriteVST1R, ReadVST1R, ReadVSTX]>;
 def VS2R_V : VWholeStore<1, "vs2r.v", VRM2>,

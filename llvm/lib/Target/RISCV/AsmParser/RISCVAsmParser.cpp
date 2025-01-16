@@ -757,6 +757,16 @@ public:
            VK == RISCVMCExpr::VK_RISCV_None;
   }
 
+  bool isSImm9() const {
+    if (!isImm())
+      return false;
+    RISCVMCExpr::VariantKind VK = RISCVMCExpr::VK_RISCV_None;
+    int64_t Imm;
+    bool IsConstantImm = evaluateConstantImm(getImm(), Imm, VK);
+    return IsConstantImm && isInt<9>(fixImmediateForRV32(Imm, isRV64Imm())) &&
+           VK == RISCVMCExpr::VK_RISCV_None;
+  }
+  
   bool isSImm5() const {
     if (!isImm())
       return false;

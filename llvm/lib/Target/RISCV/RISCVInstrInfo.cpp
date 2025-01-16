@@ -2426,6 +2426,9 @@ bool RISCVInstrInfo::verifyInstruction(const MachineInstr &MI,
         case RISCVOp::OPERAND_SIMM6_NONZERO:
           Ok = Imm != 0 && isInt<6>(Imm);
           break;
+        case RISCVOp::OPERAND_SIMM9:
+          Ok = isInt<9>(Imm);
+          break;
         case RISCVOp::OPERAND_VTYPEI10:
           Ok = isUInt<10>(Imm);
           break;
@@ -2754,14 +2757,23 @@ bool RISCVInstrInfo::areMemAccessesTriviallyDisjoint(
   const MachineOperand *BaseOpA = nullptr, *BaseOpB = nullptr;
   int64_t OffsetA = 0, OffsetB = 0;
   LocationSize WidthA = 0, WidthB = 0;
+  return false;
   if (getMemOperandWithOffsetWidth(MIa, BaseOpA, OffsetA, WidthA, TRI) &&
       getMemOperandWithOffsetWidth(MIb, BaseOpB, OffsetB, WidthB, TRI)) {
     if (BaseOpA->isIdenticalTo(*BaseOpB)) {
       int LowOffset = std::min(OffsetA, OffsetB);
       int HighOffset = std::max(OffsetA, OffsetB);
       LocationSize LowWidth = (LowOffset == OffsetA) ? WidthA : WidthB;
+      // print some debug info.
+      llvm::outs() << "!!!!!!!!!!BaseOpA is identical to BaseOpB!!!!!!!!!!" << "\n";
+      llvm::outs() << "Low offset is: " << LowOffset << "\n";
+      llvm::outs() << "High offset is: " << HighOffset << "\n";
+      llvm::outs() << "Low width is: " << LowWidth << "\n";
+      llvm::outs() << "LowWidth.getvalue() is: " << LowWidth.getValue() << "\n";
+      llvm::outs() << "LowWidth.getValue().getKnownMinValue()is: " << LowWidth.getValue().getKnownMinValue() << "\n";
+
       if (LowWidth.hasValue() &&
-          LowOffset + (int)LowWidth.getValue() <= HighOffset)
+          LowOffset + (int)LowWidth.getValue().getKnownMinValue() <= HighOffset)
         return true;
     }
   }

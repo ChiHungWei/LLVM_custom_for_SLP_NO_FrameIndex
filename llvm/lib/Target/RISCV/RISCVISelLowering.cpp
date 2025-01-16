@@ -1841,9 +1841,13 @@ bool RISCVTargetLowering::isLegalAddressingMode(const DataLayout &DL,
   if (AM.BaseGV)
     return false;
 
-  // RVV instructions only support register addressing.
-  if (Subtarget.hasVInstructions() && isa<VectorType>(Ty))
+  // Custom RVV supports 9-bit signed offset vector load/store
+  if (Subtarget.hasVInstructions() && isa<VectorType>(Ty)){
+    if(AM.HasBaseReg && AM.Scale == 0 && isInt<9>(AM.BaseOffs))
+      return true;
+    
     return AM.HasBaseReg && AM.Scale == 0 && !AM.BaseOffs;
+  }
 
   // Require a 12-bit signed offset.
   if (!isInt<12>(AM.BaseOffs))
